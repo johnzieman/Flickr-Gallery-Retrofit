@@ -1,11 +1,15 @@
 package com.ziemapp.johnzieman.flickrgallery
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.annotation.WorkerThread
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.ziemapp.johnzieman.flickrgallery.api.FlickrApi
 import com.ziemapp.johnzieman.flickrgallery.api.FlickrResponse
 import com.ziemapp.johnzieman.flickrgallery.api.PhotoResponse
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -50,5 +54,12 @@ class FlickrFetchr {
             }
         })
         return responseLiveData
+    }
+
+    @WorkerThread
+    fun fetchPhoto(url: String): Bitmap? {
+        val response: Response<ResponseBody> = flickrApi.fetchUrlBytes(url).execute()
+        val bitmap = response.body()?.byteStream()?.use ( BitmapFactory::decodeStream )
+        return bitmap
     }
 }
