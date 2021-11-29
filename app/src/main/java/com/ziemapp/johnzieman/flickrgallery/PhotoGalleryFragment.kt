@@ -21,9 +21,14 @@ private const val TAG = "PhotoGalleryFragment"
 class PhotoGalleryFragment : Fragment() {
     private lateinit var photoRecyclerView: RecyclerView
     private lateinit var photoGalleryViewModel: PhotoGalleryViewModel
+    private lateinit var thumbnailDownloader: ThumbnailDownloader<PhotoHolder>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        retainInstance = false
         photoGalleryViewModel = ViewModelProvider(this).get(PhotoGalleryViewModel::class.java)
+
+        thumbnailDownloader = ThumbnailDownloader()
+        lifecycle.addObserver(thumbnailDownloader)
     }
 
     override fun onCreateView(
@@ -50,14 +55,16 @@ class PhotoGalleryFragment : Fragment() {
         )
     }
 
-    private inner class PhotoHolder(private val itemImageView: ImageView) : RecyclerView.ViewHolder(itemImageView) {
+    private inner class PhotoHolder(private val itemImageView: ImageView) :
+        RecyclerView.ViewHolder(itemImageView) {
         val bindDrawable: (Drawable) -> Unit = itemImageView::setImageDrawable
     }
 
     private inner class PhotoAdapter(private val galleryItems: List<GalleryItem>) :
         RecyclerView.Adapter<PhotoHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoHolder {
-            val view = LayoutInflater.from(parent.context).inflate(R.layout.list_item_gallery, parent, false) as ImageView
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.list_item_gallery, parent, false) as ImageView
             return PhotoHolder(view)
 
         }
@@ -69,6 +76,7 @@ class PhotoGalleryFragment : Fragment() {
                 R.drawable.ic_launcher_foreground
             ) ?: ColorDrawable()
             holder.bindDrawable(placeholder)
+            thumbnailDownloader.queueThumbnail(holder, galleryItem.url)
         }
 
         override fun getItemCount(): Int = galleryItems.size
@@ -76,5 +84,12 @@ class PhotoGalleryFragment : Fragment() {
 
     companion object {
         fun newInstance() = PhotoGalleryFragment()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        lifecycle.removeObserver(
+            thumbnailDownloader
+        )
     }
 }
