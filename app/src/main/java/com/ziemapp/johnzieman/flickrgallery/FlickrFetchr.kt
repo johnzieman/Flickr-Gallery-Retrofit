@@ -8,7 +8,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.ziemapp.johnzieman.flickrgallery.api.FlickrApi
 import com.ziemapp.johnzieman.flickrgallery.api.FlickrResponse
+import com.ziemapp.johnzieman.flickrgallery.api.PhotoInteceptor
 import com.ziemapp.johnzieman.flickrgallery.api.PhotoResponse
+import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -25,16 +27,29 @@ class FlickrFetchr {
     private val flickrApi: FlickrApi
 
     init {
+        val client = OkHttpClient.Builder()
+            .addInterceptor(PhotoInteceptor())
+            .build()
+
         val retrofit: Retrofit = Retrofit.Builder()
             .baseUrl("https://www.flickr.com/")
             .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
             .build()
         flickrApi = retrofit.create(FlickrApi::class.java)
     }
 
-    fun fetchContents(): MutableLiveData<List<GalleryItem>>  {
+    fun fetchPhotos(): LiveData<List<GalleryItem>> {
+        return fetchPhotoMetadata(flickrApi.fetchPhotos())
+    }
+
+    fun searchPhotos(query: String): LiveData<List<GalleryItem>> {
+        return fetchPhotoMetadata(flickrApi.searchPhotos(query))
+    }
+
+
+    private fun fetchPhotoMetadata(flickrRequest: Call<FlickrResponse>): LiveData<List<GalleryItem>> {
         val responseLiveData: MutableLiveData<List<GalleryItem>> = MutableLiveData()
-        val flickrRequest: Call<FlickrResponse> = flickrApi.fetchPhotos()
         flickrRequest.enqueue(object : Callback<FlickrResponse> {
             override fun onResponse(
                 call: Call<FlickrResponse>,
@@ -60,7 +75,7 @@ class FlickrFetchr {
     @WorkerThread
     fun fetchPhoto(url: String): Bitmap? {
         val response: Response<ResponseBody> = flickrApi.fetchUrlBytes(url).execute()
-        val bitmap = response.body()?.byteStream()?.use ( BitmapFactory::decodeStream )
+        val bitmap = response.body()?.byteStream()?.use(BitmapFactory::decodeStream)
         return bitmap
     }
 }
